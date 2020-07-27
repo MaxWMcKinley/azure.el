@@ -1,0 +1,13 @@
+;; login
+az login --tenant [tenantid]
+
+;; create service principal
+az ad sp create-for-rbac --name azure.el
+;; response with generated appid, password and tenant
+
+;; get oauth token, using appid, tenantid and password from previous step
+curl -X POST -d 'grant_type=client_credentials&client_id=[APP_ID]&client_secret=[PASSWORD]&resource=https%3A%2F%2Fmanagement.azure.com%2F' https://login.microsoftonline.com/[TENANT_ID]/oauth2/token
+;; response has bearer token (access_token field)
+
+;; make requests using the token:
+curl -X GET -H "Authorization: Bearer [TOKEN]" -H "Content-Type: application/json" https://management.azure.com/subscriptions/[SUBSCRIPTION_ID]/providers/Microsoft.Web/sites?api-version=2016-08-01
