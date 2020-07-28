@@ -22,7 +22,7 @@
 (aio-defun request-with-header (token url)
   "Make a request to `url` with the given `token` as the bearer token"
   (let ((url-request-method "GET")
-	 (url-request-extra-headers
+	(url-request-extra-headers
 	  `(("Content-Type" . "application/json")
 	    ("Authorization" . ,(concat "Bearer " token)))))
     (aio-await (aio-url-retrieve url))))
@@ -30,8 +30,8 @@
 ;; curl -X POST -d 'grant_type=client_credentials&client_id=[APP_ID]&client_secret=[PASSWORD]&resource=https%3A%2F%2Fmanagement.azure.com%2F' https://login.microsoftonline.com/[TENANT_ID]/oauth2/token
 (aio-defun get-oauth (app-id tenant password)
   "Return the bearer token"
-  (let ((url-request-method "POST")
-	(url-request-data (format "grant_type=client_credentials&client_id=%s&client_secret=%s&resource=https%%3A%%2F%%2Fmanagement.azure.com%%2F" app-id password))
+  (let* ((url-request-method "POST")
+	 (url-request-data (format "grant_type=client_credentials&client_id=%s&client_secret=%s&resource=https://management.azure.com/" app-id password))
 	(resp (aio-await (aio-url-retrieve (format "https://login.microsoftonline.com/%s/oauth2/token" tenant))))
 	(buf (cdr resp)))
     (with-current-buffer buf
