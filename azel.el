@@ -21,7 +21,7 @@
 ;; Create azure major made based on tabulated list
 (define-derived-mode azure-mode tabulated-list-mode "Azure"
   "Azure Mode"
-  (let ((columns [("Resource" 20) ("Kind" 20) ("Location" 20) ("Resource Group" 20)]); ("Tags" 20)])
+  (let ((columns [("Resource" 25) ("Kind" 25) ("Location" 25) ("Resource Group" 25)])
         (rows (mapcar (lambda (x) `(nil ,x)) (get-resources))))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
@@ -33,3 +33,31 @@
   (interactive)
   (switch-to-buffer "*azure*")
   (azure-mode))
+
+;; Just a temporary test function to test transient functionality
+(defun test-popup (&optional args)
+  (interactive
+   (list (transient-args 'azure-transient)))
+  (message "Args: %s" args))
+
+;; Example azure transient command
+(define-transient-command azure-transient ()
+  "Title"
+  ["Arguments"
+   ("-s" "Switch" "--switch")
+   ("-g" "Resource Group" "--group=")]
+  ["Actions"
+   ("f" "Filter" test-popup)
+   ("r" "Run Function" test-popup)
+   ("d" "Deploy code" test-popup)
+   ("r" "Restart" test-popup)
+   ("l" "View Logs" test-popup)
+   ("m" "View Metrics" test-popup)
+   ("s" "Download App Settings" test-popup)])
+
+;; Attempting to add transient keybinding
+;; Seems to be shadowed by evil mode map
+(defvar azure-mode-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map (kbd "a") 'azure-transient)
+    map))
