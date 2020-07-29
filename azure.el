@@ -14,8 +14,6 @@
 						      (trace . "trace")))
 (setq log4e--log-buffer-leetcode "*azure-log*")
 
-(setq endpoints '())
-
 (defun json-parse (str)
   "parse json from str as hashtable"
     (let ((json-object-type 'hash-table)
@@ -57,10 +55,12 @@
     ((null endpoints)
      (message "No endpoints logged yet; wait a few more seconds"))
     (t
-     (query-and-display (concat (car endpoints) "/" (read-string (concat "Query: " (car endpoints) "/")))))))
+     (query-and-display endpoints))))
 
-(defun query-and-display (e)
-  (message (get-request e)))
+(defun query-and-display (endpoints)
+  (let* ((endpoint (ivy-read "Endpoint to query: " endpoints))
+	 (params (read-string (concat "Query: " endpoint "/"))))
+  (message (get-request (concat endpoint "/" params)))))
 
 (defun insertion-filter (proc string)
   (when (buffer-live-p (process-buffer proc))
