@@ -184,19 +184,10 @@
     (sleep-for 2 0))
   (azure-func-query))
 
-(define-transient-command azure-transient ()
-  "Title"
-  ["Arguments"
-   ("-s" "Switch" "--switch")
-   ("-l" "Location" "--location=")
-   ("-g" "Resource Group" "--group=")]
+(define-transient-command azure-function-transient ()
+  "Azure Functions Commands"
   ["Actions"
-   ("f" "Query Function" query-function-main)
-   ("d" "Deploy code" test-popup)
-   ("r" "Resources" set-resources)
-   ("u" "Update" update-table)
-   ("m" "View Metrics" test-popup)
-   ("s" "Download App Settings" test-popup)])
+   ("f" "Query Function" query-function-main)])
 
 ;; TODO: Some combinations aren't allowed e.g. tag and anything else
 (define-transient-command azure-resource-transient ()
@@ -213,10 +204,17 @@
    ("r" "Display Resources" update-resources)
    ("u" "Update with example data" update-table)])
 
+(define-transient-command azure-transient ()
+  "Azure Command Overview"
+  ["Actions"
+   ("r" "Resources" azure-resource-transient)
+   ("f" "Functions" azure-function-transient)])
+
 ;; Attempting to add transient keybinding
 ;; Seems to be shadowed by evil mode map
 (defvar azure-map
   (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "a") 'azure-transient)
+    (define-key map (kbd "?") 'azure-transient)
+    (define-key map (kbd "r") 'azure-resource-transient)
+    (define-key map (kbd "f") 'azure-function-transient)
     map))
-
