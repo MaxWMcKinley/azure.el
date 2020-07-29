@@ -1,6 +1,7 @@
 (require 'json)
 (require 'log4e)
 (require 'url)
+(require 'transient)
 
 (setq lexical-binding t)
 
@@ -33,6 +34,7 @@
   (when (boundp 'functions-server)
     (message "Closing existing server")
     (azure-func-stop))
+  (message "Starting Functions server...")
   (setq endpoints nil)
   (with-current-buffer (generate-new-buffer "*Azure Functions*")
     ;; NOTE: c# and ts use a different command
@@ -153,14 +155,22 @@
    (list (transient-args 'azure-transient)))
   (message "Args: %s" args))
 
-;; Example azure transient command
+(defun query-function-main (&optional args)
+  "Start functions server if not started, then prompt to query the endpoint."
+  (interactive)
+  (when (not (boundp 'functions-server))
+    (azure-func-start)
+    ;; wait for endpoint to populate
+    (sleep-for 2 0))
+  (azure-func-query))
+
 (define-transient-command azure-transient ()
   "Title"
   ["Arguments"
    ("-s" "Switch" "--switch")
    ("-g" "Resource Group" "--group=")]
   ["Actions"
-   ("f" "Query Function" test-popup)
+   ("f" "Query Function" query-function-main)
    ("d" "Deploy code" test-popup)
    ("r" "Restart" test-popup)
    ("l" "View Logs" test-popup)
@@ -173,3 +183,4 @@
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "a") 'azure-transient)
     map))
+
