@@ -124,15 +124,25 @@
 (defun enrich-resources (resources)
   (mapcar (lambda (x) (enrich-resource-status x)) resources))
 
+;; TODO: This fails if the az command returns an empty array
+(defun run-resource-list (&optional args)
+  (json-parse (shell-command-to-string (concat "az resource list " (mapconcat 'identity args " ")))))
+
 ;; Fetch resource list with az, then format result as a vector in the format tabulated-list-mode can read
-(defun get-resources ()
-  (let ((res (enrich-resources (filter-resources (json-parse (shell-command-to-string "az resource list"))))))
+(defun get-resources (&optional args)
+  (let ((res (enrich-resources (filter-resources (run-resource-list args)))))
     (mapcar (lambda (x) (vector (gethash "name" x)
                                 (gethash "status" x)
                                 (gethash "kind" x)
                                 (gethash "location" x)
                                 (gethash "resourceGroup" x))
               ) res)))
+
+(defun update-resources (&optional args)
+  (interactive
+   (list (transient-args 'azure-resource-transient)))
+  (let ((rows (mapcar (lambda (x) `(nil ,x)) (get-resources args))))
+    (update-table-entries rows)))
 
 ;; Create azure major made based on tabulated list
 (define-derived-mode azure-mode tabulated-list-mode "Azure"
@@ -144,6 +154,14 @@
     (setq tabulated-list-entries rows)
     (tabulated-list-init-header)
     (tabulated-list-print)))
+
+(defun update-table ()
+  (interactive)
+  (update-table-entries (list `(nil ["a" "b" "c" "d" "e"]))))
+
+(defun update-table-entries (entries)
+  (setq tabulated-list-entries entries)
+  (tabulated-list-print))
 
 ;; Interactive function to launch azel
 (defun azure ()
@@ -170,14 +188,30 @@
   "Title"
   ["Arguments"
    ("-s" "Switch" "--switch")
+   ("-l" "Location" "--location=")
    ("-g" "Resource Group" "--group=")]
   ["Actions"
    ("f" "Query Function" query-function-main)
    ("d" "Deploy code" test-popup)
-   ("r" "Restart" test-popup)
-   ("l" "View Logs" test-popup)
+   ("r" "Resources" set-resources)
+   ("u" "Update" update-table)
    ("m" "View Metrics" test-popup)
    ("s" "Download App Settings" test-popup)])
+
+;; TODO: Some combinations aren't allowed e.g. tag and anything else
+(define-transient-command azure-resource-transient ()
+  "Azure Resource Commands"
+  ["Arguments"
+   ("-s" "Subscription" "--subscription=")
+   ("-g" "Resource Group" "--resource-group=")
+   ("-l" "Location" "--location=")
+   ("-t" "Tag" "--tag=")
+   ("-r" "Resource Type" "--resource-type=")
+   ("-n" "Name" "--name=")
+   ("-p" "Namespace" "--namespace=")]
+  ["Actions"
+   ("r" "Display Resources" update-resources)
+   ("u" "Update with example data" update-table)])
 
 ;; Attempting to add transient keybinding
 ;; Seems to be shadowed by evil mode map
