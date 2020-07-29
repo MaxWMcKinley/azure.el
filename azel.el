@@ -6,13 +6,42 @@
     (json-read-from-string str)))
 
 ;; Remove any resources of "null" kind
-(defun filter-resources (res)
-  (seq-filter (lambda (x) (gethash "kind" x)) res))
+(defun filter-resources (resources)
+  (seq-filter (lambda (x) (gethash "kind" x)) resources))
+
+;; Get detailed information for any resource given its id
+(defun get-resource-details (id)
+  (json-parse (shell-command-to-string (format "az resource show --ids %s" id))))
+
+;; The status field is called different things depending on the type of resource
+;; This function could be optimized by eagerly exiting when finding a valid status field
+(defun get-status-from-details (details)
+  (let* ((properties (gethash "properties" details))
+         (status (gethash "status" properties))
+         (state (gethash "state" properties))
+         (primary (gethash "statusOfPrimary" properties)))
+    (cond (status status)
+          (state state)
+          (primary primary)
+          (t "N/A"))))
+
+;; Add status of a resource to its hash table
+(defun enrich-resource-status (resource-hash-table)
+  (let* ((id (gethash "id" resource-hash-table))
+         (details (get-resource-details id))
+         (status (get-status-from-details details)))
+    (puthash "status" status resource-hash-table)
+    resource-hash-table))
+
+;; Enrich a list of resources with data only visible in their detailed views
+(defun enrich-resources (resources)
+  (mapcar (lambda (x) (enrich-resource-status x)) resources))
 
 ;; Fetch resource list with az, then format result as a vector in the format tabulated-list-mode can read
 (defun get-resources ()
-  (let ((res (filter-resources (json-parse (shell-command-to-string "az resource list")))))
+  (let ((res (enrich-resources (filter-resources (json-parse (shell-command-to-string "az resource list"))))))
     (mapcar (lambda (x) (vector (gethash "name" x)
+                                (gethash "status" x)
                                 (gethash "kind" x)
                                 (gethash "location" x)
                                 (gethash "resourceGroup" x))
@@ -21,7 +50,7 @@
 ;; Create azure major made based on tabulated list
 (define-derived-mode azure-mode tabulated-list-mode "Azure"
   "Azure Mode"
-  (let ((columns [("Resource" 25) ("Kind" 25) ("Location" 25) ("Resource Group" 25)])
+  (let ((columns [("Resource" 20) ("Status" 20) ("Kind" 20) ("Location" 20) ("Resource Group" 20)])
         (rows (mapcar (lambda (x) `(nil ,x)) (get-resources))))
     (setq tabulated-list-format columns)
     (setq tabulated-list-entries rows)
