@@ -2,6 +2,7 @@
 (require 'log4e)
 (require 'url)
 (require 'transient)
+(require 'ivy)
 
 (setq lexical-binding t)
 
@@ -136,6 +137,7 @@
 ;; Create azure major made based on tabulated list
 (define-derived-mode azure-mode tabulated-list-mode "Azure"
   "Azure Mode"
+  (use-local-map azure-map)
   (let ((columns [("Resource" 20) ("Status" 20) ("Kind" 20) ("Location" 20) ("Resource Group" 20)])
         (rows (mapcar (lambda (x) `(nil ,x)) (get-resources))))
     (setq tabulated-list-format columns)
@@ -179,7 +181,7 @@
 
 ;; Attempting to add transient keybinding
 ;; Seems to be shadowed by evil mode map
-(defvar azure-mode-map
+(defvar azure-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "a") 'azure-transient)
     map))
