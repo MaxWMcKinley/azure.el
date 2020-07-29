@@ -23,9 +23,8 @@
 
 (defun get-request (url)
   (let* ((url-request-method "GET")
-         (resp (url-retrieve-synchronously url))
-	 (buf resp))
-    (with-current-buffer buf
+         (resp (url-retrieve-synchronously url)))
+    (with-current-buffer resp
       (buffer-string))))
 
 (defun request-with-header (token url)
@@ -69,10 +68,10 @@
 (defun azure-func-start ()
   "Start Functions server in the background"
   (interactive)
+  (when (boundp 'functions-server)
+    (message "Closing existing server")
+    (azure-func-stop))
   (with-current-buffer (generate-new-buffer "*Azure Functions*")
-    (when (boundp 'functions-server)
-      (message "Closing existing server")
-      (azure-func-stop))
     ;; NOTE: c# and ts use a different command
     (setq functions-server (start-process "Azure Functions Server" (current-buffer) "func" "start")))
   (set-process-sentinel functions-server 'func-cleanup)
@@ -111,7 +110,7 @@
 
 (defun set-endpoint-if-present (string)
  (string-match "^Http Functions:\n\n[ \t\n]*HttpTrigger: \\[.*\\] *\\(http.*\\)" string)
- (let ((match (match-string 1 string)))
+ (let ((match (ignore-errors (match-string 1 string))))
    (when (and
 	   (not (null match))
 	   ;; TODO: figure out why regex gives false positives like "["
