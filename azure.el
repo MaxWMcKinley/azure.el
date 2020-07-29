@@ -27,44 +27,6 @@
     (with-current-buffer resp
       (buffer-string))))
 
-(defun request-with-header (token url)
-  "Make a request to `url` with the given `token` as the bearer token"
-  (let ((url-request-method "GET")
-	(url-request-extra-headers
-	  `(("Content-Type" . "application/json")
-	    ("Authorization" . ,(concat "Bearer " token)))))
-    (url-retrieve-synchronously url)))
-
-;; curl -X POST -d 'grant_type=client_credentials&client_id=[APP_ID]&client_secret=[PASSWORD]&resource=https%3A%2F%2Fmanagement.azure.com%2F' https://login.microsoftonline.com/[TENANT_ID]/oauth2/token
-(defun get-oauth (app-id tenant password)
-  "Return the bearer token"
-  (let* ((url-request-method "POST")
-	 (url-request-data (format "grant_type=client_credentials&client_id=%s&client_secret=%s&resource=https://management.azure.com/" app-id password))
-	(resp (url-retrieve-synchronously (format "https://login.microsoftonline.com/%s/oauth2/token" tenant)))
-	(buf (cdr resp)))
-    (with-current-buffer buf
-      (buffer-string))))
-
-(defun create-principal ()
-  "Create service principal"
-  (let*
-    ((json (json-parse (shell-command-to-string "az ad sp create-for-rbac --name azure.el 2>/dev/null")))
-     (password (gethash "password" json))
-     (tenant (gethash "tenant" json))
-     (app-id (gethash "appId" json)))
-   `((app-id . ,app-id) (tenant . ,tenant) (password . ,password))))
-
-(defun azure-login ()
-  "Populate the global bearer-token for use with future requests"
-  (interactive)
-  (let*
-    ((alist (create-principal))
-    (app-id (alist-get 'app-id alist))
-    (tenant (alist-get 'tenant alist))
-    (password (alist-get 'password alist))
-    (token (get-oauth app-id tenant password)))
-   (setq bearer-token token)))
-
 (defun azure-func-start ()
   "Start Functions server in the background"
   (interactive)
@@ -198,8 +160,7 @@
    ("-s" "Switch" "--switch")
    ("-g" "Resource Group" "--group=")]
   ["Actions"
-   ("f" "Filter" test-popup)
-   ("r" "Run Function" test-popup)
+   ("f" "Query Function" test-popup)
    ("d" "Deploy code" test-popup)
    ("r" "Restart" test-popup)
    ("l" "View Logs" test-popup)
