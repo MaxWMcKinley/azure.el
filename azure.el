@@ -184,6 +184,21 @@
     (sleep-for 2 0))
   (azure-func-query))
 
+;; This unecessarily refetches all the resources again, can be optimzed to retrieve this info on startup
+(defun get-locations ()
+  "Get all resource locations"
+  (let* ((resources (filter-resources (run-resource-list)))
+        (locations (mapcar (lambda (x) (gethash "location" x)) resources)))
+    (seq-uniq locations)))
+
+(transient-define-infix resource-transient:--location ()
+  "Location transient infix"
+  :description "Location"
+  :shortarg "-l"
+  :argument "--location="
+  :class 'transient-option
+  :choices (get-locations))
+
 (define-transient-command azure-function-transient ()
   "Azure Functions Commands"
   ["Actions"
@@ -195,7 +210,7 @@
   ["Arguments"
    ("-s" "Subscription" "--subscription=")
    ("-g" "Resource Group" "--resource-group=")
-   ("-l" "Location" "--location=")
+   (resource-transient:--location)
    ("-t" "Tag" "--tag=")
    ("-r" "Resource Type" "--resource-type=")
    ("-n" "Name" "--name=")
@@ -210,8 +225,6 @@
    ("r" "Resources" azure-resource-transient)
    ("f" "Functions" azure-function-transient)])
 
-;; Attempting to add transient keybinding
-;; Seems to be shadowed by evil mode map
 (defvar azure-map
   (let ((map (make-sparse-keymap)))
     (define-key map (kbd "?") 'azure-transient)
