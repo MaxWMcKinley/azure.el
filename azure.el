@@ -80,14 +80,23 @@
           (set-marker (process-mark proc) (point)))
         (when moving (goto-char (process-mark proc)))))))
 
+(defun re-seq (regexp string)
+  "Get a list of all regexp matches in a string"
+  (save-match-data
+    (let ((pos 0)
+          matches)
+      (while (string-match regexp string pos)
+        (push (match-string 0 string) matches)
+        (setq pos (match-end 0)))
+      matches)))
+
 (defun set-endpoint-if-present (string)
- (string-match "^Http Functions:\n\n[ \t\n]*HttpTrigger: \\[.*\\] *\\(http.*\\)" string)
- (let ((match (ignore-errors (match-string 1 string))))
-   (when (and
-	   (not (null match))
-	   ;; TODO: figure out why regex gives false positives like "["
-	   (not (= 1 (length match))))
-     (push match endpoints))))
+  (let*
+    ((match (string-match "^Http Functions:\n\n\\([ \t]*.+: \\[.*\\] *http.+\n\n\\)+" string))
+     (endpoints-str (ignore-errors (match-string 0 string)))
+     (epoints (re-seq "https?://.+" endpoints-str)))
+    (when (not (null epoints))
+      (setq endpoints epoints))))
 
 (defun azure-func-stop ()
   "Stop the Functions server"
