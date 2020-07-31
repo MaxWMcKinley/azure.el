@@ -1,8 +1,13 @@
+;;; azure.el -*- lexical-binding: t; -*-
+
+(setq lexical-binding t)
+
 (require 'json)
 (require 'log4e)
 (require 'url)
 (require 'transient)
 (require 'ivy)
+(require 'aio)
 
 (setq lexical-binding t)
 
@@ -21,10 +26,11 @@
 	(json-key-type 'string))
     (json-read-from-string str)))
 
-(defun get-request (url)
+(aio-defun get-request (url)
   (let* ((url-request-method "GET")
-         (resp (url-retrieve-synchronously url)))
-    (with-current-buffer resp
+         (resp (aio-await (aio-url-retrieve url)))
+	 (buf (cdr resp)))
+    (with-current-buffer buf
       (buffer-string))))
 
 (defun azure-func-start ()
@@ -47,7 +53,7 @@
 	(= (process-status (process-name proc)) 'exit))
     (kill-buffer (process-buffer proc))))
 
-(defun azure-func-query ()
+(aio-defun azure-func-query ()
   (interactive)
   (cond
     ((not (boundp 'functions-server))
@@ -55,12 +61,12 @@
     ((null endpoints)
      (message "No endpoints logged yet; wait a few more seconds"))
     (t
-     (query-and-display endpoints))))
+     (aio-await (query-and-display endpoints)))))
 
-(defun query-and-display (endpoints)
+(aio-defun query-and-display (endpoints)
   (let* ((endpoint (ivy-read "Endpoint to query: " endpoints))
 	 (params (read-string (concat "Query: " endpoint "/"))))
-  (message (get-request (concat endpoint "/" params)))))
+  (message (aio-await (get-request (concat endpoint "/" params))))))
 
 (defun insertion-filter (proc string)
   (when (buffer-live-p (process-buffer proc))
@@ -89,7 +95,8 @@
   (when (boundp 'functions-server)
     (kill-buffer (process-buffer functions-server))
     (delete-process functions-server)
-    (makunbound 'functions-server))
+    (makunbound 'functions-server)
+    (setq endpoints nil))
   't)
 
 ;; Remove any resources of "null" kind
@@ -175,14 +182,18 @@
    (list (transient-args 'azure-transient)))
   (message "Args: %s" args))
 
-(defun query-function-main (&optional args)
+(aio-defun query-function-main ()
   "Start functions server if not started, then prompt to query the endpoint."
   (interactive)
   (when (not (boundp 'functions-server))
     (azure-func-start)
     ;; wait for endpoint to populate
     (sleep-for 2 0))
-  (azure-func-query))
+  (aio-await (azure-func-query)))
+
+(defun query-function-main-sync ()
+  (interactive)
+  (aio-wait-for (query-function-main)))
 
 ;; This unecessarily refetches all the resources again, can be optimzed to retrieve this info on startup
 (defun get-locations ()
@@ -202,7 +213,7 @@
 (define-transient-command azure-function-transient ()
   "Azure Functions Commands"
   ["Actions"
-   ("f" "Query Function" query-function-main)])
+   ("f" "Query Function" query-function-main-sync)])
 
 ;; TODO: Some combinations aren't allowed e.g. tag and anything else
 (define-transient-command azure-resource-transient ()
